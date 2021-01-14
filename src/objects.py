@@ -7,18 +7,17 @@ from fastapi import HTTPException
 import paramiko
 
 # application modules
-from src.mixins import ORJSONSerializableMixin
 from src.config import config
 from src.utils import get_db_cursor
 
 
-class Collection(ORJSONSerializableMixin):
+class Collection(object):
 
     def __init__(self, id: int, sample_needed_per_label: int=None, duration_in_seconds_per_sample: int=None, *args, **kwargs):
         self.id = id
-        if sample_needed_per_label:
+        if not sample_needed_per_label is None:
             self.sample_needed_per_label = sample_needed_per_label
-        if duration_in_seconds_per_sample:
+        if not duration_in_seconds_per_sample is None:
             self.duration_in_seconds_per_sample = duration_in_seconds_per_sample
 
     @classmethod
@@ -35,13 +34,13 @@ class Collection(ORJSONSerializableMixin):
 
         return cls(created_collection.Id, sample_needed_per_label, duration_in_seconds_per_sample)
         
-class Label(ORJSONSerializableMixin):
+class Label(object):
 
     def __init__(self, id: int, name: str=None, sample_count: int=None, *args, **kwargs):
         self.id = id
         if name:
             self.name = name
-        if sample_count:
+        if not sample_count is None:
             self.sample_count = sample_count
 
     @classmethod
@@ -70,7 +69,7 @@ class Label(ORJSONSerializableMixin):
             return []
         labels_list = []
         for label in labels:
-            labels_list.append(cls(label.Id, label.Name))
+            labels_list.append(cls(label.Id, name=label.Name, sample_count=label.SampleCount))
         return labels_list
 
     def is_eligible_for_training(self):
@@ -108,7 +107,7 @@ class Label(ORJSONSerializableMixin):
             collections_list.append(Collection(collection.Id, sample_needed_per_label=collection.SamplesPerLabel, duration_in_seconds_per_sample=collection.SampleDurationInSeconds))
         return collections_list
 
-class SpeechAPI(ORJSONSerializableMixin):
+class SpeechAPI(object):
 
     def __init__(self, id: int, name: str=None, training_status: int=None, type: str=None):
         self.id = id
@@ -184,7 +183,7 @@ class SpeechAPI(ORJSONSerializableMixin):
             print(traceback.print_exc())
             raise HTTPException(detail="Cannot trigger training pipeline", status_code=500)
 
-class SpeechAPIVersion(ORJSONSerializableMixin):
+class SpeechAPIVersion(object):
 
     def __init__(self, id: int, speech_api: SpeechAPI=None, version: str=None, last_updated: datetime=None, is_active: bool=None, *args, **kwargs):
         self.id = id
@@ -199,10 +198,10 @@ class SpeechAPIVersion(ORJSONSerializableMixin):
     
     def get_labels(self):
         cursor = get_db_cursor()
-        sql_query = f"EXEC GetLabels @SpeechAPIVersionId={self.d}"
+        sql_query = f"EXEC GetLabels @SpeechAPIVersionId={self.id}"
         try:
             with cursor:
-                result = cursor.execute(sql_query, self.id)
+                result = cursor.execute(sql_query)
                 labels = result.fetchall()
         except Exception as e:
             raise HTTPException(detail=f"Cannot fetch labels of the speechAPIVersion - {self.id}", status_code=409)

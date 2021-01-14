@@ -4,6 +4,7 @@ from fastapi import APIRouter
 # application modules
 from src.objects import Collection
 from src import DTO
+from src.responses import CustomResponse
 
 
 router = APIRouter(
@@ -12,7 +13,7 @@ router = APIRouter(
 )
 
 
-@router.post("", status_code=201)
+@router.post("", response_model=DTO.Collection, status_code=201)
 def create_collecion(payload: DTO.CreateCollectionIn):
     created_collection = Collection.create(payload.sampleNeededPerLabel, payload.durationInSecondsPerSample)
-    return {"collection": created_collection.toORJSON()}
+    return CustomResponse(content={"collection": created_collection}, status_code=201)
