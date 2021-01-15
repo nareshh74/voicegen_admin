@@ -36,3 +36,10 @@ async def get_label_collections(labelId: int):
     label = Label(labelId)
     collections_list = label.get_collections()
     return CustomResponse(content={"collections": collections_list})
+
+@router.get("/SampleDurations", response_model=DTO.GetSampleDurationsOfLabelsOut, status_code=200)
+async def get_sample_duration_of_labels(payload: DTO.GetSampleDurationsOfLabelsIn):
+    labels_list = []
+    for id in payload.labels:
+        labels_list.append(Label(id))
+    return CustomResponse(content={"sampleDurations": Label.get_sample_duration_of_labels(labels_list)})

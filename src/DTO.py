@@ -9,7 +9,7 @@ from pydantic import BaseModel
 # entity models
 class Label(BaseModel):
     id: int
-    name: str
+    name: str=None
     sampleCount: int=None
 
 class Collection(BaseModel):
@@ -43,6 +43,12 @@ class CreateLabelsOut(BaseModel):
 class GetLabelCollectionsOut(BaseModel):
     collections: List[Collection]
 
+class GetSampleDurationsOfLabelsIn(BaseModel):
+    labels: List[int]
+
+class GetSampleDurationsOfLabelsOut(BaseModel):
+    sampleDurations: List[int]
+
 # collection tagged endpoint responses
 class CreateCollectionIn(BaseModel):
     sampleNeededPerLabel: int
@@ -56,4 +62,11 @@ class GetAllSpeechAPIVersionsOut(BaseModel):
     speechAPIVersions: List[SpeechAPIVersion]
 
 class GetLabelsOfSpeechAPIVersionOut(BaseModel):
+    labels: List[Label]
+
+class TrainSpeechAPIIn(BaseModel):
+    labels: List[int]
+    sampleDuration: int
+
+class GetLabelsOfSpeechAPIOut(BaseModel):
     labels: List[Label]

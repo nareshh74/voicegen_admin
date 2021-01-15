@@ -3,7 +3,7 @@ from fastapi import APIRouter
 from fastapi.responses import ORJSONResponse
 
 # application modules
-from src.objects import SpeechAPI, SpeechAPIVersion
+from src.objects import SpeechAPI, SpeechAPIVersion, Label
 from src import DTO
 from src.responses import CustomResponse
 
@@ -29,11 +29,20 @@ def get_all_speech_api_versions(speechAPIId: int):
 def get_labels_of_speech_api_version(speechAPIId: int, speechAPIVersionId: int):
     speech_api = SpeechAPI(speechAPIId)
     speech_api_version = SpeechAPIVersion(speechAPIVersionId, speech_api=speech_api)
-    labels_list = speech_api_version.get_labels()
+    labels_list = speech_api_version.get_labels_of_speech_api_version()
     return CustomResponse(content={"labels": labels_list})
 
-@router.post("/{speechAPIId}/train", response_model=DTO.SuccessResponse, status_code=200)
-def train_speech_api(speechAPIId: int):
+@router.get("/{speechPAIId}/labels", response_model=DTO.GetLabelsOfSpeechAPIOut, status_code=200)
+def get_labels_of_speech_api(speechAPIId: int):
     speech_api = SpeechAPI(speechAPIId)
-    speech_api.train()
+    labels_list = speech_api.get_labels_of_speech_api()
+    return CustomResponse(content={"labels": labels_list}, status_code=200)
+
+@router.post("/{speechAPIId}/train", response_model=DTO.SuccessResponse, status_code=200)
+def train_speech_api(speechAPIId: int, payload: DTO.TrainSpeechAPIIn):
+    speech_api = SpeechAPI(speechAPIId)
+    labels_list = []
+    for label_id in payload.labels:
+        labels_list.append(Label(label_id))
+    speech_api.train(labels_list, payload.sampleDuration)
     return CustomResponse()
