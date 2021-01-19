@@ -14,6 +14,7 @@ class Label(BaseModel):
 
 class Collection(BaseModel):
     id: int
+    name: str=None
     sampleNeededPerLabel: int=None
     durationInSecondsPerSample: int=None
 
@@ -53,7 +54,11 @@ class GetSampleDurationsOfLabelsOut(BaseModel):
 class CreateCollectionIn(BaseModel):
     sampleNeededPerLabel: int
     durationInSecondsPerSample: int
+    name: str=None
 
+class GetAllCollectionsOut(BaseModel):
+    collections: List[Collection]
+    
 # speechAPI tagged endpoint responses
 class GetAllSpeechAPIsOut(BaseModel):
     speechAPIs: List[SpeechAPI]
@@ -67,6 +72,13 @@ class GetLabelsOfSpeechAPIVersionOut(BaseModel):
 class TrainSpeechAPIIn(BaseModel):
     labels: List[int]
     sampleDuration: int
+    class Config:
+        schema_extra = {
+            "example": {
+                "labels": [1, 2, 3],
+                "sampleDuration": 5
+            }
+        }
 
 class GetLabelsOfSpeechAPIOut(BaseModel):
     labels: List[Label]

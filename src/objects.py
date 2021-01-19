@@ -5,6 +5,7 @@ from datetime import datetime
 # 3rd party modules
 from fastapi import HTTPException
 import paramiko
+from pyodbc import Error
 
 # application modules
 from src.config import config
@@ -13,24 +14,47 @@ from src.utils import get_db_cursor
 
 class Collection(object):
 
-    def __init__(self, id: int, sample_needed_per_label: int=None, duration_in_seconds_per_sample: int=None, *args, **kwargs):
+    def __init__(self, id: int, name: str=None, sample_needed_per_label: int=None, duration_in_seconds_per_sample: int=None, *args, **kwargs):
         self.id = id
+        if not name is None:
+            self.name = name
         if not sample_needed_per_label is None:
             self.sample_needed_per_label = sample_needed_per_label
         if not duration_in_seconds_per_sample is None:
             self.duration_in_seconds_per_sample = duration_in_seconds_per_sample
 
     @classmethod
-    def create(cls, sample_needed_per_label:int, duration_in_seconds_per_sample:int, *args, **kwargs):
+    def get_all(cls):
         cursor = get_db_cursor()
-        sql_query = f"EXEC CreateCollections @SampleDurationInSeconds = {duration_in_seconds_per_sample}, @SamplesPerLabel = {sample_needed_per_label}"
+        sql_query = """SELECT CollectionId AS Id, Name, SampleDurationInSeconds, SamplesPerLabel 
+                    FROM Collections WHERE IsActive = 1"""
+        collections = None
+        try:
+            with cursor:
+                result = cursor.execute(sql_query)
+                collections = result.fetchall()
+        except Exception as e:
+            message = "Cannot fetch collections"
+            raise HTTPException(detail=message, status_code=409)
+        collection_instances = []
+        for collection in collections:
+            collection_instances.append(cls(collection.Id, name=collection.Name, duration_in_seconds_per_sample=collection.SampleDurationInSeconds, sample_needed_per_label=collection.SamplesPerLabel))
+        return collection_instances
+
+    @classmethod
+    def create(cls, sample_needed_per_label:int, duration_in_seconds_per_sample:int, name: str=None, *args, **kwargs):
+        cursor = get_db_cursor()
+        sql_query = f"EXEC CreateCollections @SampleDurationInSeconds={duration_in_seconds_per_sample}, @SamplesPerLabel={sample_needed_per_label}, @Name='{name}'"
         created_collection = None
         try:
             with cursor:
                 result = cursor.execute(sql_query)
                 created_collection = result.fetchone()
         except Exception as e:
-            raise HTTPException(detail=f"Cannot add label - {self.name} to collection {created_collection.Id}", status_code=409)
+            message = f"Cannot create collection with name - {name}"
+            if isinstance(e, Error) and e.args[1].find('52000') != -1:
+                message = f"a collection with given name - '{name}', already exists"
+            raise HTTPException(detail=message, status_code=409)
 
         return cls(created_collection.Id, sample_needed_per_label, duration_in_seconds_per_sample)
         
@@ -52,7 +76,10 @@ class Label(object):
                 result = cursor.execute(sql_query)
                 created_label = result.fetchone()
         except Exception as e:
-            raise HTTPException(detail=f"Cannot create label - {name}", status_code=409)
+            message = f"Cannot create label with name - {name}"
+            if isinstance(e, Error) and e.args[1].find('52000') != -1:
+                message = f"a label with given name - '{name}', already exists"
+            raise HTTPException(detail=message, status_code=409)
         return cls(created_label.Id, name=name)
     
     @classmethod
@@ -198,11 +225,10 @@ class SpeechAPI(object):
                 labels = result.fetchall()
         except Exception as e:
             raise HTTPException(detail=f"Cannot fetch names of the label IDs - {labels_id_csv}", status_code=409)
-        if len(labels) == 0:
-            return []
         label_names_csv = ""
         for label in labels:
-            label_names_csv += label.Name
+            label_names_csv += label.Name + ','
+        label_names_csv = label_names_csv[:-1]
         
         # get speech api name from DB
         cursor = get_db_cursor()
@@ -217,8 +243,7 @@ class SpeechAPI(object):
         except Exception as e:
             raise HTTPException(detail=f"Cannot fetch name of the speech API ID - {self.id}", status_code=409)
 
-        speech_api_name = speech_api.Name
-        if speech_api_name is None:
+        if speech_api is None:
             raise HTTPException(detail=f"No active speech API exists with ID - {self.id}", status_code=409)
         
         # connect to remote shell
@@ -226,13 +251,13 @@ class SpeechAPI(object):
             ssh_client = paramiko.SSHClient()
             ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             ssh_client.connect(hostname=config.gpu_host,username=config.gpu_username,password=config.gpu_password)
-            stdin, stdout, stderr = ssh_client.exec_command(f'echo {label_names_csv} >> "labels.csv"')
-            stdin, stdout, stderr = ssh_client.exec_command(f'echo {sample_duration_cut_off} >> "labels.csv"')
-            stdin, stdout, stderr = ssh_client.exec_command(f'echo {speech_api_name} >> "labels.csv"')
+            stdin, stdout, stderr = ssh_client.exec_command(f'touch labels.csv')
+            stdin, stdout, stderr = ssh_client.exec_command(f'echo "{label_names_csv}" >> "labels.csv"')
+            stdin, stdout, stderr = ssh_client.exec_command(f'echo "{sample_duration_cut_off}" >> "labels.csv"')
+            stdin, stdout, stderr = ssh_client.exec_command(f'echo "{speech_api.Name}" >> "labels.csv"')
             stdin, stdout, stderr = ssh_client.exec_command(f'mv labels.csv /home/mlvgadmin/Data/dev/watch/')
             ssh_client.close()
         except Exception as e:
-            print(traceback.print_exc())
             raise HTTPException(detail="Cannot trigger training pipeline", status_code=500)
 
 class SpeechAPIVersion(object):
