@@ -55,9 +55,28 @@ class Collection(object):
             if isinstance(e, Error) and e.args[1].find('52000') != -1:
                 message = f"a collection with given name - '{name}', already exists"
             raise HTTPException(detail=message, status_code=409)
-
         return cls(created_collection.Id, sample_needed_per_label, duration_in_seconds_per_sample)
-        
+    
+    def add_labels(self, labels):
+        cursor = get_db_cursor()
+        labels_csv = ""
+        for label in labels:
+            labels_csv += str(label) + ','
+        labels_csv = labels_csv[:-1]
+        sql_query = f"EXEC CreateCollectionLabelMapping @CollectionId={self.id}, @Labels='{labels_csv}'"
+        created_mappings = None
+        try:
+            with cursor:
+                result = cursor.execute(sql_query)
+                created_mappings = result.fetchall()
+        except Exception as e:
+            message = f"Cannot map collection '{self.id}' with labels - {labels_csv}"
+            raise HTTPException(detail=message, status_code=409)
+        created_mappings_list = []
+        for created_mapping in created_mappings:
+            created_mappings_list.append({"label": Label(created_mapping.LabelId, name=created_mapping.LabelName), "collection": Collection(created_mapping.CollectionId, name=created_mapping.CollectionName)})
+        return created_mappings_list
+
 class Label(object):
 
     def __init__(self, id: int, name: str=None, sample_count: int=None, *args, **kwargs):

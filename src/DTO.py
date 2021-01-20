@@ -58,7 +58,33 @@ class CreateCollectionIn(BaseModel):
 
 class GetAllCollectionsOut(BaseModel):
     collections: List[Collection]
-    
+
+class AddLabelsToCollectionIn(BaseModel):
+    labels: List[int]
+
+class LabelCollectionMapping(BaseModel):
+    label: Label
+    collection: Collection
+
+class AddLabelsToCollectionOut(BaseModel):
+    mappings: List[LabelCollectionMapping]
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "mappings": [
+                    {
+                        "label": {"id": 1, "name": "label1"},
+                        "collection": {"id": 1, "name": "collection1"}
+                    },
+                    {
+                        "label": {"id": 2, "name": "label2"},
+                        "collection": {"id": 1, "name": "collection1"}
+                    }
+                ]
+            }
+        }
+
 # speechAPI tagged endpoint responses
 class GetAllSpeechAPIsOut(BaseModel):
     speechAPIs: List[SpeechAPI]

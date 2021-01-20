@@ -22,3 +22,9 @@ def create_collecion(payload: DTO.CreateCollectionIn):
 def get_all_collections():
     collections = Collection.get_all()
     return CustomResponse(content={"collections": collections}, status_code=200)
+
+@router.post("{collectionId}", response_model=DTO.AddLabelsToCollectionOut, status_code=201)
+def add_labels_to_collection(collectionId: int, payload: DTO.AddLabelsToCollectionIn):
+    collection = Collection(collectionId)
+    created_mappings = collection.add_labels(payload.labels)
+    return CustomResponse(content={"mappings": created_mappings}, status_code=201)
