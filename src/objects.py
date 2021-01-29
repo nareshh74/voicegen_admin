@@ -55,7 +55,7 @@ class Collection(object):
             if isinstance(e, Error) and e.args[1].find('52000') != -1:
                 message = f"a collection with given name - '{name}', already exists"
             raise HTTPException(detail=message, status_code=409)
-        return cls(created_collection.Id, sample_needed_per_label, duration_in_seconds_per_sample)
+        return cls(created_collection.Id, name=name, sample_needed_per_label=sample_needed_per_label, duration_in_seconds_per_sample=duration_in_seconds_per_sample)
     
     def add_labels(self, labels):
         cursor = get_db_cursor()
@@ -175,6 +175,27 @@ class SpeechAPI(object):
             self.type = type
 
     @classmethod
+    def create(cls, name, description=None, labels=None):
+        cursor = get_db_cursor()
+        if not labels or len(labels) == 0:
+            raise HTTPException(detail="SpeechAPI needs atleast 1 active label")
+        if not description:
+            description = name
+        sql_query = f"EXEC CreateSpeechAPI @Name='{name}', @Description='{description}', @Labels='{labels}'"
+        try:
+            with cursor:
+                result = cursor.execute(sql_query)
+                speech_apis = result.fetchall()
+        except Exception as e:
+            message = f"Cannot fetch labels of the SpeechAPI - {name}"
+            if isinstance(e, Error) and e.args[1].find('52000') != -1:
+                message = f"a speechAPI with given name - '{name}', already exists"
+            if isinstance(e, Error) and e.args[1].find('53000') != -1:
+                message = f"{labels} are not active"
+            raise HTTPException(detail=message, status_code=409)
+        return speech_apis
+
+    @classmethod
     def get_all(cls):
         cursor = get_db_cursor()
         sql_query = "EXEC GetActiveSpeechAPI"
@@ -228,15 +249,11 @@ class SpeechAPI(object):
             labels_list.append(Label(label.Id, name=label.Name, sample_count=label.SampleCount))
         return labels_list
 
-    def train(self, label_instance_list, sample_duration_cut_off):
+    def train(self, labels_id_csv, sample_duration_cut_off=5):
 
         # intentional 2 seperate DB calls
         # get labels names from DB
         cursor = get_db_cursor()
-        labels_id_csv = ""
-        for label_instance in label_instance_list:
-            labels_id_csv += str(label_instance.id) + ','
-        labels_id_csv = labels_id_csv[:-1]
         sql_query = f"EXEC GetLabelNames @LabelIds = '{labels_id_csv}'"
         try:
             with cursor:
@@ -249,22 +266,25 @@ class SpeechAPI(object):
             label_names_csv += label.Name + ','
         label_names_csv = label_names_csv[:-1]
         
-        # get speech api name from DB
-        cursor = get_db_cursor()
-        sql_query = """SELECT Name 
-                    FROM SpeechAPI
-                    WHERE SpeechAPIId = ?
-                    AND IsActive = 1"""
-        try:
-            with cursor:
-                result = cursor.execute(sql_query, self.id)
-                speech_api = result.fetchone()
-        except Exception as e:
-            raise HTTPException(detail=f"Cannot fetch name of the speech API ID - {self.id}", status_code=409)
+        if not self.name:
+            # get speech api name from DB
+            cursor = get_db_cursor()
+            sql_query = """SELECT Name 
+                        FROM SpeechAPI
+                        WHERE SpeechAPIId = ?
+                        AND IsActive = 1"""
+            try:
+                with cursor:
+                    result = cursor.execute(sql_query, self.id)
+                    speech_api = result.fetchone()
+            except Exception as e:
+                raise HTTPException(detail=f"Cannot fetch name of the speech API ID - {self.id}", status_code=409)
 
-        if speech_api is None:
-            raise HTTPException(detail=f"No active speech API exists with ID - {self.id}", status_code=409)
-        
+            if speech_api is None:
+                raise HTTPException(detail=f"No active speech API exists with ID - {self.id}", status_code=409)
+            
+            self.name = speech_api.name
+
         # connect to remote shell
         try:
             ssh_client = paramiko.SSHClient()
@@ -273,7 +293,7 @@ class SpeechAPI(object):
             stdin, stdout, stderr = ssh_client.exec_command(f'touch labels.csv')
             stdin, stdout, stderr = ssh_client.exec_command(f'echo "{label_names_csv}" >> "labels.csv"')
             stdin, stdout, stderr = ssh_client.exec_command(f'echo "{sample_duration_cut_off}" >> "labels.csv"')
-            stdin, stdout, stderr = ssh_client.exec_command(f'echo "{speech_api.Name}" >> "labels.csv"')
+            stdin, stdout, stderr = ssh_client.exec_command(f'echo "{self.name}" >> "labels.csv"')
             stdin, stdout, stderr = ssh_client.exec_command(f'mv labels.csv /home/mlvgadmin/Data/dev/watch/')
             ssh_client.close()
         except Exception as e:
@@ -291,7 +311,7 @@ class SpeechAPIVersion(object):
             self.last_updated = last_updated
         if is_active:
             self.is_active = is_active
-    
+
     def get_labels_of_speech_api_version(self):
         cursor = get_db_cursor()
         sql_query = f"EXEC GetLabelsOfSpeechAPIVersion @SpeechAPIVersionId={self.id}"

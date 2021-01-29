@@ -1,4 +1,5 @@
 # 3rd party modules
+from os import name
 from fastapi import APIRouter
 from fastapi.responses import ORJSONResponse
 
@@ -13,6 +14,16 @@ router = APIRouter(
     tags=["SpeechAPI"]
 )
 
+
+@router.post("/{SpeechAPIName}", response_model=DTO.CreateSpeechAPIOut, status_code=201)
+def create_speech_api(speechAPIName: str, payload: DTO.CreateSpeechAPIIn):
+    labels_id_csv = ""
+    for label_id in payload.labels:
+        labels_id_csv += str(label_id)
+    speech_apis = SpeechAPI.create(speechAPIName, description=payload.description, labels=labels_id_csv)
+    speech_api = SpeechAPI(speech_apis[0].id, name=speechAPIName)
+    speech_api.train(labels_id_csv, payload.sampleDuration)
+    return CustomResponse()
 
 @router.get("", response_model=DTO.GetAllSpeechAPIsOut, status_code=200)
 def get_all_speech_apis():
@@ -41,8 +52,9 @@ def get_labels_of_speech_api(speechAPIId: int):
 @router.post("/{speechAPIId}/train", response_model=DTO.SuccessResponse, status_code=200)
 def train_speech_api(speechAPIId: int, payload: DTO.TrainSpeechAPIIn):
     speech_api = SpeechAPI(speechAPIId)
-    labels_list = []
+    labels_id_csv = ""
     for label_id in payload.labels:
-        labels_list.append(Label(label_id))
-    speech_api.train(labels_list, payload.sampleDuration)
+        labels_id_csv += str(label_id)
+    labels_id_csv = labels_id_csv[:-1]
+    speech_api.train(labels_id_csv, payload.sampleDuration)
     return CustomResponse()

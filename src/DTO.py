@@ -86,6 +86,23 @@ class AddLabelsToCollectionOut(BaseModel):
         }
 
 # speechAPI tagged endpoint responses
+class CreateSpeechAPIIn(BaseModel):
+    description: str
+    labels: List[int]
+    sampleDuration: int
+    class Config:
+        schema_extra = {
+            "example": {
+                "description": "example description",
+                "labels": [1, 2, 3]
+            }
+        }
+class CreateSpeechAPIOut(BaseModel):
+    speechAPIId: int
+    speechAPIName: str
+    labelId: int
+    labelName: str
+
 class GetAllSpeechAPIsOut(BaseModel):
     speechAPIs: List[SpeechAPI]
 
