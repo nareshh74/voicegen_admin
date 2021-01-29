@@ -4,3 +4,4 @@ uvicorn==0.13.3
 python-dotenv==0.15.0
 orjson==3.4.6
 paramiko==2.7.2
+aiofiles==0.6.0
