@@ -34,6 +34,29 @@ class SpeechAPIVersion(BaseModel):
 class SuccessResponse(BaseModel):
     detail: str
 
+# summary tagged endpoints
+class GetDeviceCountOut(BaseModel):
+    deviceCount: int
+
+class GetSampleCountOut(BaseModel):
+    sampleCount: int
+
+class GetLabelCountOut(BaseModel):
+    labelCount: int
+
+class GetSpeechAPICountOut(BaseModel):
+    speechAPICount: int
+
+class SubmissionDate(datetime.date):
+    pass
+
+class SubmissionCountPerDate(BaseModel):
+    submissionDate: SubmissionDate
+    submissionCount: int
+
+class GetSampleSubmissionTrendOut(BaseModel):
+    sampleSubmissionTrend: List[SubmissionCountPerDate]
+
 # label tagged endpoint responses
 class GetAllLabelsOut(BaseModel):
     labels: List[Label]
@@ -94,14 +117,17 @@ class CreateSpeechAPIIn(BaseModel):
         schema_extra = {
             "example": {
                 "description": "example description",
+                "sampleDuration": 5,
                 "labels": [1, 2, 3]
             }
         }
+
 class CreateSpeechAPIOut(BaseModel):
-    speechAPIId: int
-    speechAPIName: str
-    labelId: int
-    labelName: str
+    id: int
+    name: str=None
+    trainingStatus: str=None
+    type: str=None
+    
 
 class GetAllSpeechAPIsOut(BaseModel):
     speechAPIs: List[SpeechAPI]
@@ -123,5 +149,11 @@ class TrainSpeechAPIIn(BaseModel):
             }
         }
 
+class GetLabelsOfSpeechAPIIn(BaseModel):
+    sampleDuration: int
+
 class GetLabelsOfSpeechAPIOut(BaseModel):
     labels: List[Label]
+
+class GetSampleDurationsOut(BaseModel):
+    sampleDurations: List[int]

@@ -1,7 +1,6 @@
 # 3rd party modules
 from os import name
 from fastapi import APIRouter
-from fastapi.responses import ORJSONResponse
 
 # application modules
 from src.objects import SpeechAPI, SpeechAPIVersion, Label
@@ -15,15 +14,15 @@ router = APIRouter(
 )
 
 
-@router.post("/{SpeechAPIName}", response_model=DTO.CreateSpeechAPIOut, status_code=201)
+@router.post("/{speechAPIName}", response_model=DTO.CreateSpeechAPIOut, status_code=201)
 def create_speech_api(speechAPIName: str, payload: DTO.CreateSpeechAPIIn):
     labels_id_csv = ""
     for label_id in payload.labels:
         labels_id_csv += str(label_id)
-    speech_apis = SpeechAPI.create(speechAPIName, description=payload.description, labels=labels_id_csv)
-    speech_api = SpeechAPI(speech_apis[0].id, name=speechAPIName)
+    created_speech_api = SpeechAPI.create(speechAPIName, description=payload.description, labels=labels_id_csv)
+    speech_api = SpeechAPI(created_speech_api.Id, name=created_speech_api.SpeechAPIName, training_status="in progress", type=created_speech_api.APIType)
     speech_api.train(labels_id_csv, payload.sampleDuration)
-    return CustomResponse()
+    return CustomResponse(content={"speechAPI": speech_api}, status_code=200)
 
 @router.get("", response_model=DTO.GetAllSpeechAPIsOut, status_code=200)
 def get_all_speech_apis():
@@ -43,10 +42,10 @@ def get_labels_of_speech_api_version(speechAPIId: int, speechAPIVersionId: int):
     labels_list = speech_api_version.get_labels_of_speech_api_version()
     return CustomResponse(content={"labels": labels_list})
 
-@router.get("/{speechPAIId}/labels", response_model=DTO.GetLabelsOfSpeechAPIOut, status_code=200)
-def get_labels_of_speech_api(speechAPIId: int):
+@router.post("/{speechAPIId}/labels", response_model=DTO.GetLabelsOfSpeechAPIOut, status_code=200)
+def get_labels_of_speech_api(speechAPIId: int, payload: DTO.GetLabelsOfSpeechAPIIn):
     speech_api = SpeechAPI(speechAPIId)
-    labels_list = speech_api.get_labels_of_speech_api()
+    labels_list = speech_api.get_labels_of_speech_api(payload.sampleDuration)
     return CustomResponse(content={"labels": labels_list}, status_code=200)
 
 @router.post("/{speechAPIId}/train", response_model=DTO.SuccessResponse, status_code=200)
@@ -58,3 +57,8 @@ def train_speech_api(speechAPIId: int, payload: DTO.TrainSpeechAPIIn):
     labels_id_csv = labels_id_csv[:-1]
     speech_api.train(labels_id_csv, payload.sampleDuration)
     return CustomResponse()
+
+@router.get("/{speechAPIId}/sampleDurations", response_model=DTO.GetSampleDurationsOfLabelsOut, status_code=200)
+def get_sample_durations(speechAPIId: int):
+    speech_api = SpeechAPI(speechAPIId)
+    return CustomResponse(content={"sampleDurations": speech_api.get_sample_durations()}, status_code=200)

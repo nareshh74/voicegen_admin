@@ -99,7 +99,7 @@ class Label(object):
             if isinstance(e, Error) and e.args[1].find('52000') != -1:
                 message = f"a label with given name - '{name}', already exists"
             raise HTTPException(detail=message, status_code=409)
-        return cls(created_label.Id, name=name)
+        return cls(created_label.Id, name=name, sample_count=0)
     
     @classmethod
     def get_sample_duration_of_labels(cls, label_instance_list):
@@ -160,7 +160,7 @@ class Label(object):
             raise HTTPException(detail=f"Cannot fetch Collections of Label - {self.id}", status_code=409)
         collections_list = []
         for collection in result:
-            collections_list.append(Collection(collection.Id, sample_needed_per_label=collection.SamplesPerLabel, duration_in_seconds_per_sample=collection.SampleDurationInSeconds))
+            collections_list.append(Collection(collection.Id, name=collection.CollectionName, sample_needed_per_label=collection.SamplesPerLabel, duration_in_seconds_per_sample=collection.SampleDurationInSeconds))
         return collections_list
 
 class SpeechAPI(object):
@@ -185,7 +185,7 @@ class SpeechAPI(object):
         try:
             with cursor:
                 result = cursor.execute(sql_query)
-                speech_apis = result.fetchall()
+                created_speech_api = result.fetchone()
         except Exception as e:
             message = f"Cannot fetch labels of the SpeechAPI - {name}"
             if isinstance(e, Error) and e.args[1].find('52000') != -1:
@@ -193,7 +193,7 @@ class SpeechAPI(object):
             if isinstance(e, Error) and e.args[1].find('53000') != -1:
                 message = f"{labels} are not active"
             raise HTTPException(detail=message, status_code=409)
-        return speech_apis
+        return created_speech_api
 
     @classmethod
     def get_all(cls):
@@ -230,20 +230,31 @@ class SpeechAPI(object):
             speech_api_versions_list.append(SpeechAPIVersion(speech_api_version.Id, speech_api=self, version=speech_api_version.VersionNumber, last_updated=speech_api_version.LastUpdated, is_active=speech_api_version.IsActive))
         return speech_api_versions_list
     
-    def get_labels_of_speech_api(self):
+    def get_sample_durations(self):
         cursor = get_db_cursor()
-        sql_query = """SELECT DISTINCT L.LabelId AS Id, L.Name, L.SampleCount
-                    FROM SpeechAPILabel SL
-                    INNER JOIN Labels L On L.LabelId = SL.Label_id AND L.IsActive = 1
-                    WHERE SL.SpeechAPI_id = ?"""
+        sql_query = "EXEC GetSampleDurations @SpeechAPIId = ?"
         try:
             with cursor:
                 result = cursor.execute(sql_query, self.id)
+                sample_durations = result.fetchall()
+        except Exception as e:
+            raise HTTPException(detail=f"Cannot fetch sample durations of the SpeechAPI - {self.id}", status_code=409)
+        if len(sample_durations) == 0:
+            return []
+        sample_durations_list = []
+        for sample_duration in sample_durations:
+            sample_durations_list.append(sample_duration.SampleDurations)
+        return sample_durations_list
+
+    def get_labels_of_speech_api(self, sample_duration):
+        cursor = get_db_cursor()
+        sql_query = f"EXEC GetLabelsOfSpeechAPI @SpeechAPIId = {self.id}, @SampleDuration = {sample_duration}"
+        try:
+            with cursor:
+                result = cursor.execute(sql_query)
                 labels = result.fetchall()
         except Exception as e:
             raise HTTPException(detail=f"Cannot fetch labels of the SpeechAPI - {self.id}", status_code=409)
-        if len(labels) == 0:
-            return []
         labels_list = []
         for label in labels:
             labels_list.append(Label(label.Id, name=label.Name, sample_count=label.SampleCount))
@@ -266,7 +277,7 @@ class SpeechAPI(object):
             label_names_csv += label.Name + ','
         label_names_csv = label_names_csv[:-1]
         
-        if not self.name:
+        if not hasattr(self, "name") or not self.name:
             # get speech api name from DB
             cursor = get_db_cursor()
             sql_query = """SELECT Name 
@@ -283,7 +294,7 @@ class SpeechAPI(object):
             if speech_api is None:
                 raise HTTPException(detail=f"No active speech API exists with ID - {self.id}", status_code=409)
             
-            self.name = speech_api.name
+            self.name = speech_api.Name
 
         # connect to remote shell
         try:

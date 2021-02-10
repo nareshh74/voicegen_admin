@@ -1,6 +1,5 @@
 # 3rd party modules
 from fastapi import APIRouter
-from fastapi.responses import ORJSONResponse
 
 # application modules
 from src.objects import Label, Collection
