@@ -47,15 +47,15 @@ class GetLabelCountOut(BaseModel):
 class GetSpeechAPICountOut(BaseModel):
     speechAPICount: int
 
-class SubmissionDate(datetime.date):
-    pass
+# class SubmissionDate(datetime.date):
+#     pass
 
-class SubmissionCountPerDate(BaseModel):
-    submissionDate: SubmissionDate
-    submissionCount: int
+# class SubmissionCountPerDate(BaseModel):
+#     submissionDate: SubmissionDate
+#     submissionCount: int
 
-class GetSampleSubmissionTrendOut(BaseModel):
-    sampleSubmissionTrend: List[SubmissionCountPerDate]
+# class GetSampleSubmissionTrendOut(BaseModel):
+#     sampleSubmissionTrend: List[SubmissionCountPerDate]
 
 # label tagged endpoint responses
 class GetAllLabelsOut(BaseModel):

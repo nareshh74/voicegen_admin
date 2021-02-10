@@ -29,7 +29,7 @@ def to_camel_case(snake_str):
     return components[0] + ''.join(x.title() for x in components[1:])
 
 def convert(input_value):
-    if isinstance(input_value, str) or isinstance(input_value, int) or isinstance(input_value, datetime.datetime):
+    if isinstance(input_value, str) or isinstance(input_value, int) or isinstance(input_value, datetime.datetime) or isinstance(input_value, datetime.date):
         return input_value
     if isinstance(input_value, decimal.Decimal):
         return int(input_value)

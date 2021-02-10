@@ -74,20 +74,20 @@ def get_label_count():
         raise HTTPException(detail=message, status_code=500)
     return CustomResponse(content={"speechAPICount": speech_api_count.SpeecAPICount}, status_code=200)
 
-@router.get("/SampleSubmissionTrend", response_model=DTO.GetSampleSubmissionTrendOut, status_code=200)
+@router.get("/SampleSubmissionTrend", status_code=200)
 def get_sample_submission_trend():
-    cursor = get_db_cursor
+    cursor = get_db_cursor()
     sql_query = """SELECT CAST(CreatedAt AS Date) AS Date, COUNT(1) AS SubmissionCount
                 FROM Samples
                 GROUP BY CAST(CreatedAt AS Date)"""
     try:
         with cursor:
             result = cursor.execute(sql_query)
-            result = result.fetchall()
+            sample_submission_trend = result.fetchall()
     except Exception as e:
         message = "Cannot get sample submission trend"
         raise HTTPException(detail=message, status_code=500)
     result_list = []
-    for row in result:
+    for row in sample_submission_trend:
         result_list.append({"submissionDate": row.Date, "submissionCount": row.SubmissionCount})
     return CustomResponse(content={"sampleSubmissionTrend": result_list}, status_code=200)
