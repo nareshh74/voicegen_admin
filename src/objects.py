@@ -190,7 +190,7 @@ class SpeechAPI(object):
             message = f"Cannot fetch labels of the SpeechAPI - {name}"
             if isinstance(e, Error) and e.args[1].find('52000') != -1:
                 message = f"a speechAPI with given name - '{name}', already exists"
-            if isinstance(e, Error) and e.args[1].find('53000') != -1:
+            elif isinstance(e, Error) and e.args[1].find('53000') != -1:
                 message = f"{labels} are not active"
             raise HTTPException(detail=message, status_code=409)
         return created_speech_api

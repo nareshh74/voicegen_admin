@@ -77,7 +77,6 @@ class GetSampleDurationsOfLabelsOut(BaseModel):
 class CreateCollectionIn(BaseModel):
     sampleNeededPerLabel: int
     durationInSecondsPerSample: int
-    name: str=None
 
 class GetAllCollectionsOut(BaseModel):
     collections: List[Collection]

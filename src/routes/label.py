@@ -13,15 +13,15 @@ router = APIRouter(
 )
 
 
-@router.get("", response_model=DTO.GetAllLabelsOut, status_code=200)
-async def get_all_labels():
-    labels_list = Label.get_all()
-    return CustomResponse(content={"labels": labels_list})
-
 @router.post("/{labelName}", response_model=DTO.CreateLabelsOut, status_code=201)
 async def create_label(labelName: str):
     created_label = Label.create(labelName)
     return CustomResponse(content={"label": created_label}, status_code=201)
+
+@router.get("", response_model=DTO.GetAllLabelsOut, status_code=200)
+async def get_all_labels():
+    labels_list = Label.get_all()
+    return CustomResponse(content={"labels": labels_list})
 
 @router.post("/{labelId}/collection/{collectionId}", response_model=DTO.SuccessResponse, status_code=201)
 async def add_to_collection(labelId: int, collectionId: int):

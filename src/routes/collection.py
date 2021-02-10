@@ -13,9 +13,9 @@ router = APIRouter(
 )
 
 
-@router.post("", response_model=DTO.Collection, status_code=201)
-def create_collecion(payload: DTO.CreateCollectionIn):
-    created_collection = Collection.create(payload.sampleNeededPerLabel, payload.durationInSecondsPerSample, name=payload.name)
+@router.post("/{collectionName}", response_model=DTO.Collection, status_code=201)
+def create_collecion(collectionName: str, payload: DTO.CreateCollectionIn):
+    created_collection = Collection.create(payload.sampleNeededPerLabel, payload.durationInSecondsPerSample, name=collectionName)
     return CustomResponse(content={"collection": created_collection}, status_code=201)
 
 @router.get("", response_model=DTO.GetAllCollectionsOut, status_code=200)
